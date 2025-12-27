@@ -1,15 +1,48 @@
-import React from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import React, { useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-const MapViz = ({ origin, destination }) => {
+// Fix for default marker icons in React-Leaflet
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+
+L.Marker.prototype.options.icon = DefaultIcon;
+
+// Component to handle map bounds adjustment
+const MapBounds = ({ sourceCoords, destCoords }) => {
+    const map = useMap();
+    
+    useEffect(() => {
+        if (sourceCoords && destCoords) {
+            const bounds = L.latLngBounds([sourceCoords, destCoords]);
+            map.fitBounds(bounds, { padding: [50, 50] });
+        } else if (sourceCoords) {
+            map.setView(sourceCoords, 13);
+        }
+    }, [sourceCoords, destCoords, map]);
+    
+    return null;
+};
+
+const MapViz = ({ origin, destination, sourceCoords, destCoords }) => {
     // Default center (Hyderabad coordinates)
     const defaultCenter = [17.385044, 78.486671];
+    
+    // Use source coordinates if available, otherwise default
+    const mapCenter = sourceCoords || defaultCenter;
 
     return (
         <div style={{ position: 'relative', height: '400px', borderRadius: '12px', overflow: 'hidden' }}>
             <MapContainer 
-                center={defaultCenter} 
+                center={mapCenter} 
                 zoom={12} 
                 style={{ width: '100%', height: '100%' }}
             >
@@ -18,11 +51,22 @@ const MapViz = ({ origin, destination }) => {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 
-                {/* Display origin and destination if provided */}
-                {origin && (
-                    <Marker position={defaultCenter}>
+                <MapBounds sourceCoords={sourceCoords} destCoords={destCoords} />
+                
+                {/* Display origin marker if coordinates provided */}
+                {origin && sourceCoords && (
+                    <Marker position={sourceCoords}>
                         <Popup>
                             <strong>Origin:</strong> {origin}
+                        </Popup>
+                    </Marker>
+                )}
+                
+                {/* Display destination marker if coordinates provided */}
+                {destination && destCoords && (
+                    <Marker position={destCoords}>
+                        <Popup>
+                            <strong>Destination:</strong> {destination}
                         </Popup>
                     </Marker>
                 )}

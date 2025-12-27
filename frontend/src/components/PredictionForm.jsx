@@ -93,7 +93,18 @@ const PredictionForm = ({ onPrediction }) => {
         setError(null);
         try {
             const result = await predictDelay(formData);
-            onPrediction(result.delay_minutes, formData);
+            
+            // Find coordinates for source and destination
+            const sourceStop = stops.find(s => s.stop_name === formData.source);
+            const destStop = stops.find(s => s.stop_name === formData.destination);
+            
+            const enrichedFormData = {
+                ...formData,
+                sourceCoords: sourceStop ? [sourceStop.stop_lat, sourceStop.stop_lon] : null,
+                destCoords: destStop ? [destStop.stop_lat, destStop.stop_lon] : null
+            };
+            
+            onPrediction(result.delay_minutes, enrichedFormData);
         } catch (err) {
             setError('Failed to get prediction');
         } finally {
