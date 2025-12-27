@@ -23,21 +23,22 @@ const scenarioData = [
 
 const Dashboard = () => {
     const [prediction, setPrediction] = useState(null);
-    const [mapParams, setMapParams] = useState({ origin: '', destination: '' });
+    const [mapParams, setMapParams] = useState({ 
+        origin: '', 
+        destination: '',
+        sourceCoords: null,
+        destCoords: null
+    });
 
-    const handleFormUpdate = (formData) => {
-        // Update map params when form changes (or when prediction happens? let's do real-time or on predict)
-        // For better UX, let's update when prediction happens or add a specific "Update Map" action.
-        // Actually, let's pass a handler to PredictionForm to bubble up changes if we want real-time map, 
-        // OR just keep it simple: Map updates when Prediction is triggered.
-        // Let's assume onPrediction also receives the full form data.
-        // We need to modify PredictionForm to pass formData back up.
-    };
-
-    // Modified to receive formData
+    // Modified to receive formData with coordinates
     const handlePrediction = (delay, formData) => {
         setPrediction(delay);
-        setMapParams({ origin: formData.source, destination: formData.destination });
+        setMapParams({ 
+            origin: formData.source, 
+            destination: formData.destination,
+            sourceCoords: formData.sourceCoords,
+            destCoords: formData.destCoords
+        });
     };
 
     return (
@@ -79,7 +80,12 @@ const Dashboard = () => {
             {/* Map Section */}
             <div className="card" style={{ marginBottom: '24px' }}>
                 <h2>Route Visualization & Traffic</h2>
-                <MapViz origin={mapParams.origin} destination={mapParams.destination} />
+                <MapViz 
+                    origin={mapParams.origin} 
+                    destination={mapParams.destination}
+                    sourceCoords={mapParams.sourceCoords}
+                    destCoords={mapParams.destCoords}
+                />
             </div>
 
             <div className="dashboard-grid">
