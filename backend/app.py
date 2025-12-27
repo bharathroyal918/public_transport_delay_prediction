@@ -38,19 +38,33 @@ def predict():
 
     data = request.json
     try:
-        # Expected input: route_id, day_of_week, time_of_day, weather_condition, event_type
-        # We need to fetch/infer other features like temp/precip if not provided, 
-        # but for this MVP we expect the user to provide "Weather Scenario" or we use defaults.
-        # Let's assume the frontend sends the raw features the model needs OR high level ones.
+        # Extract only the features the model expects
+        # Convert route_id from text to a numeric hash (for demo purposes)
+        route_id_str = data.get('route_id', '')
+        route_id = hash(route_id_str) % 10000  # Simple hash to numeric
         
-        # Simplified: Front end sends all features for "What-If"
-        input_data = pd.DataFrame([data])
+        # Calculate day_of_week from date if provided
+        if 'date' in data:
+            from datetime import datetime
+            date_obj = datetime.strptime(data['date'], '%Y-%m-%d')
+            days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+            day_of_week = days[date_obj.weekday()]
+        else:
+            day_of_week = data.get('day_of_week', 'Monday')
         
-        # Preprocessing: Convert time_of_day if needed? 
-        # The model pipeline expects raw features. 
-        # Features: route_id, day_of_week, weather_condition, event_type, temperature_c, precipitation_mm, event_attendance, traffic_factor
+        # Build model input with exact features expected
+        model_input = {
+            'route_id': route_id,
+            'day_of_week': day_of_week,
+            'weather_condition': data.get('weather_condition', 'Clear'),
+            'event_type': data.get('event_type', 'None'),
+            'temperature_c': float(data.get('temperature_c', 20)),
+            'precipitation_mm': float(data.get('precipitation_mm', 0)),
+            'event_attendance': int(data.get('event_attendance', 0)),
+            'traffic_factor': float(data.get('traffic_factor', 1.0))
+        }
         
-        # Ensure correct types
+        input_data = pd.DataFrame([model_input])
         prediction = model.predict(input_data)
         return jsonify({'delay_minutes': float(prediction[0])})
     except Exception as e:
