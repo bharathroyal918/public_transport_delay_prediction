@@ -65,4 +65,5 @@ A full-stack AI application to predict public transport delays based on weather,
     ```
 
 ## Logic Overview
-The model takes inputs like `Precipitation`, `Temperature`, `Event Attendance`, and `Traffic Factor`. It uses a Random Forest model (R2 score ~0.94) to predict the expected delay in minutes.
+The model takes inputs like `Precipitation`, `Temperature`, `Event Attendance`, and `Traffic Factor`. It uses a Random Forest model (R2 score ~0.94) to predict the expected delay in minutes...
+test
