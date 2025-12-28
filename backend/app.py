@@ -4,6 +4,7 @@ import pandas as pd
 import joblib
 import os
 import numpy as np
+import requests
 from utils.gtfs_loader import GTFSLoader
 
 app = Flask(__name__)
@@ -92,7 +93,8 @@ def get_stops():
     trip_headsign = request.args.get('headsign')
     
     if loader.load_data(city):
-        return jsonify(loader.get_stops(route_id, trip_headsign))
+        stops_data = loader.get_stops(route_id, trip_headsign)
+        return jsonify(stops_data)
     return jsonify([]), 404
 
 @app.route('/api/stats', methods=['GET'])
@@ -103,6 +105,93 @@ def stats():
         'avg_delay': 12.5,
         'events_impact': 'High'
     })
+
+@app.route('/api/route-info', methods=['GET'])
+def get_route_info():
+    """
+    Fetch route information (distance, duration, coordinates) from OpenRouteService API
+    """
+    try:
+        start_lat = float(request.args.get('start_lat'))
+        start_lon = float(request.args.get('start_lon'))
+        end_lat = float(request.args.get('end_lat'))
+        end_lon = float(request.args.get('end_lon'))
+        
+        # OpenRouteService API endpoint
+        # Note: You'll need to sign up at https://openrouteservice.org/ to get a free API key
+        ORS_API_KEY = os.environ.get('ORS_API_KEY', '5b3ce3597851110001cf6248f88b37a31c9a4c069b64e9e050e80a14')
+        
+        url = 'https://api.openrouteservice.org/v2/directions/driving-car'
+        headers = {
+            'Authorization': ORS_API_KEY,
+            'Content-Type': 'application/json'
+        }
+        
+        body = {
+            'coordinates': [[start_lon, start_lat], [end_lon, end_lat]],
+            'alternative_routes': {
+                'share_factor': 0.6,
+                'target_count': 3,
+                'weight_factor': 1.4
+            }
+            # Note: Traffic consideration removed due to free tier limitations
+            # 'options': {
+            #     'avoid_features': [],
+            #     'profile_params': {
+            #         'weightings': {
+            #             'traffic': True  # Requires premium plan
+            #         }
+            #     }
+            # }
+        }
+        
+        response = requests.post(url, json=body, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            # Extract route information from the 'routes' array (JSON format response)
+            if data.get('routes') and len(data['routes']) > 0:
+                from polyline import decode
+                routes_list = []
+                
+                for idx, route in enumerate(data['routes']):
+                    segments = route['segments'][0]
+                    
+                    # Get distance in km and duration in minutes
+                    distance_km = round(segments['distance'] / 1000, 2)
+                    duration_min = round(segments['duration'] / 60, 1)
+                    
+                    # Decode the geometry polyline to get coordinates
+                    geometry_string = route['geometry']
+                    decoded_coords = decode(geometry_string)
+                    
+                    routes_list.append({
+                        'id': idx,
+                        'distance': distance_km,
+                        'duration': duration_min,
+                        'coordinates': decoded_coords
+                    })
+                
+                # Return all available routes
+                return jsonify({
+                    'routes': routes_list,
+                    'selectedRoute': 0  # Default to first route
+                })
+            else:
+                return jsonify({'error': 'No route found'}), 404
+        else:
+            return jsonify({'error': f'OpenRouteService API error: {response.status_code}'}), 500
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+            
+    except requests.exceptions.Timeout:
+        return jsonify({'error': 'Request timeout'}), 504
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': f'Network error: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 if __name__ == '__main__':
     load_model()

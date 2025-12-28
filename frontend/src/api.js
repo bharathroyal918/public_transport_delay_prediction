@@ -65,3 +65,15 @@ export const getStops = async (city, routeId = null, headsign = null) => {
         return [];
     }
 }
+
+export const getRouteInfo = async (startLat, startLon, endLat, endLon) => {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/route-info`, {
+            params: { start_lat: startLat, start_lon: startLon, end_lat: endLat, end_lon: endLon }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Route info fetch failed", error);
+        return null;
+    }
+}
