@@ -27,8 +27,10 @@ const Dashboard = () => {
         origin: '', 
         destination: '',
         sourceCoords: null,
-        destCoords: null
+        destCoords: null,
+        routeInfo: null
     });
+    const [selectedRouteDetails, setSelectedRouteDetails] = useState(null);
 
     // Modified to receive formData with coordinates
     const handlePrediction = (delay, formData) => {
@@ -37,8 +39,21 @@ const Dashboard = () => {
             origin: formData.source, 
             destination: formData.destination,
             sourceCoords: formData.sourceCoords,
-            destCoords: formData.destCoords
+            destCoords: formData.destCoords,
+            routeInfo: formData.routeInfo
         });
+        // Set initial selected route to first route if available
+        if (formData.routeInfo?.routes?.[0]) {
+            setSelectedRouteDetails(formData.routeInfo.routes[0]);
+        } else {
+            // Clear route details if no route info available
+            setSelectedRouteDetails(null);
+        }
+    };
+    
+    // Callback to update selected route from MapViz
+    const handleRouteSelect = (route) => {
+        setSelectedRouteDetails(route);
     };
 
     return (
@@ -81,10 +96,13 @@ const Dashboard = () => {
             <div className="card" style={{ marginBottom: '24px' }}>
                 <h2>Route Visualization & Traffic</h2>
                 <MapViz 
+                    key={mapParams.routeInfo ? `map-${mapParams.routeInfo.routes?.length || 0}-${JSON.stringify(mapParams.routeInfo.routes?.map(r => r.summary?.distance))}` : 'map-empty'}
                     origin={mapParams.origin} 
                     destination={mapParams.destination}
                     sourceCoords={mapParams.sourceCoords}
                     destCoords={mapParams.destCoords}
+                    routeInfo={mapParams.routeInfo}
+                    onRouteSelect={handleRouteSelect}
                 />
             </div>
 
@@ -104,6 +122,31 @@ const Dashboard = () => {
                                         ? "Moderate delay expected."
                                         : "On time (minimal delay)."}
                             </p>
+                            {selectedRouteDetails && (
+                                <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
+                                    <h4 style={{ marginTop: 0, color: '#475569' }}>Route Details</h4>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                                        <div>
+                                            <p style={{ margin: '5px 0', color: '#64748b', fontSize: '0.9em' }}>Distance</p>
+                                            <p style={{ margin: '5px 0', fontSize: '1.2em', fontWeight: 'bold', color: '#0f172a' }}>
+                                                {selectedRouteDetails.distance} km
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p style={{ margin: '5px 0', color: '#64748b', fontSize: '0.9em' }}>Travel Time</p>
+                                            <p style={{ margin: '5px 0', fontSize: '1.2em', fontWeight: 'bold', color: '#0f172a' }}>
+                                                {selectedRouteDetails.duration} min
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#fff', borderRadius: '6px' }}>
+                                        <p style={{ margin: '5px 0', color: '#64748b', fontSize: '0.9em' }}>Total Journey Time (with delay)</p>
+                                        <p style={{ margin: '5px 0', fontSize: '1.3em', fontWeight: 'bold', color: '#dc2626' }}>
+                                            {(selectedRouteDetails.duration + prediction).toFixed(1)} min
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div style={{ textAlign: 'center', color: '#64748b' }}>

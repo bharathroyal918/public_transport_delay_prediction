@@ -8,6 +8,25 @@ if not exist venv (
     echo Virtual environment already exists, skipping creation.
 )
 call venv\Scripts\activate.bat
+
+REM Check for OpenRouteService API key
+if "%ORS_API_KEY%"=="" (
+    echo WARNING: ORS_API_KEY environment variable is not set!
+    echo Please set your OpenRouteService API key to enable route visualization.
+    echo You can get a free API key at: https://openrouteservice.org/
+    echo.
+    echo To set the API key, run:
+    echo set ORS_API_KEY=your_api_key_here
+    echo.
+    echo Or set it permanently with:
+    echo setx ORS_API_KEY "your_api_key_here"
+    echo.
+    echo Press any key to continue without API key, or Ctrl+C to cancel...
+    pause > nul
+) else (
+    echo OpenRouteService API key found: %ORS_API_KEY:~0,10%...
+)
+
 echo Installing backend dependencies...
 pip install -r requirements.txt
 echo Starting backend...

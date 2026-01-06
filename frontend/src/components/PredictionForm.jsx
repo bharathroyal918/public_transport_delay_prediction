@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { predictDelay, getRoutes, getTrips, getStops } from '../api';
+import { predictDelay, getRoutes, getTrips, getStops, getRouteInfo } from '../api';
 
 const PredictionForm = ({ onPrediction }) => {
     const [formData, setFormData] = useState({
@@ -23,6 +23,7 @@ const PredictionForm = ({ onPrediction }) => {
     const [routes, setRoutes] = useState([]);
     const [trips, setTrips] = useState([]);
     const [stops, setStops] = useState([]);
+    const [routeInfo, setRouteInfo] = useState(null);
 
     // 1. Load Routes on City Change
     useEffect(() => {
@@ -68,6 +69,52 @@ const PredictionForm = ({ onPrediction }) => {
         loadStops();
     }, [formData.city, formData.route_id, formData.direction]);
 
+    // Fetch route info when both source and destination are selected
+    useEffect(() => {
+        let cancelled = false;
+        
+        const fetchRouteInfo = async () => {
+            // Only proceed if we have stops loaded and valid selections
+            if (stops.length === 0 || !formData.source || !formData.destination || formData.source === formData.destination) {
+                return;
+            }
+            
+            const sourceStop = stops.find(s => s.stop_name === formData.source);
+            const destStop = stops.find(s => s.stop_name === formData.destination);
+            
+            if (sourceStop && destStop && sourceStop.stop_id !== destStop.stop_id) {
+                try {
+                    const info = await getRouteInfo(
+                        sourceStop.stop_lat, 
+                        sourceStop.stop_lon,
+                        destStop.stop_lat,
+                        destStop.stop_lon
+                    );
+                    if (!cancelled) {
+                        setRouteInfo(info);
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch route info:', error);
+                    if (!cancelled) {
+                        setRouteInfo(null);
+                    }
+                }
+            } else {
+                if (!cancelled) {
+                    setRouteInfo(null);
+                }
+            }
+        };
+        
+        // Add a small delay to ensure stops are fully loaded
+        const timeoutId = setTimeout(fetchRouteInfo, 100);
+        
+        return () => {
+            cancelled = true;
+            clearTimeout(timeoutId);
+        };
+    }, [formData.source, formData.destination, stops.length]);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         let updates = { [name]: value };
@@ -91,7 +138,33 @@ const PredictionForm = ({ onPrediction }) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        
+        // Validate that source and destination are different
+        if (formData.source === formData.destination) {
+            setError('Source and destination cannot be the same');
+            setLoading(false);
+            return;
+        }
+        
         try {
+            // Wait for route info if it's not available yet
+            let currentRouteInfo = routeInfo;
+            if (!currentRouteInfo && formData.source && formData.destination) {
+                const sourceStop = stops.find(s => s.stop_name === formData.source);
+                const destStop = stops.find(s => s.stop_name === formData.destination);
+                
+                if (sourceStop && destStop && sourceStop.stop_id !== destStop.stop_id) {
+                    currentRouteInfo = await getRouteInfo(
+                        sourceStop.stop_lat, 
+                        sourceStop.stop_lon,
+                        destStop.stop_lat,
+                        destStop.stop_lon
+                    );
+                    // Update the component state so it's available for future renders
+                    setRouteInfo(currentRouteInfo);
+                }
+            }
+            
             const result = await predictDelay(formData);
             
             // Find coordinates for source and destination
@@ -101,7 +174,8 @@ const PredictionForm = ({ onPrediction }) => {
             const enrichedFormData = {
                 ...formData,
                 sourceCoords: sourceStop ? [sourceStop.stop_lat, sourceStop.stop_lon] : null,
-                destCoords: destStop ? [destStop.stop_lat, destStop.stop_lon] : null
+                destCoords: destStop ? [destStop.stop_lat, destStop.stop_lon] : null,
+                routeInfo: currentRouteInfo
             };
             
             onPrediction(result.delay_minutes, enrichedFormData);
@@ -126,7 +200,7 @@ const PredictionForm = ({ onPrediction }) => {
                 <div className="form-group">
                     <label>Route</label>
                     <select name="route_id" value={formData.route_id} onChange={handleChange}>
-                        {routes.map(r => <option key={r.route_id} value={r.route_short_name}>{r.route_short_name}</option>)}
+                        {routes.map((r, index) => <option key={`${r.route_id}_${index}`} value={r.route_short_name}>{r.route_short_name}</option>)}
                     </select>
                 </div>
 
@@ -134,7 +208,7 @@ const PredictionForm = ({ onPrediction }) => {
                     <label>Direction (Headsign)</label>
                     <select name="direction" value={formData.direction} onChange={handleChange}>
                         {trips.length > 0 ? (
-                            trips.map(t => <option key={t.trip_headsign} value={t.trip_headsign}>{t.trip_headsign}</option>)
+                            trips.map((t, index) => <option key={`${t.trip_headsign}_${index}`} value={t.trip_headsign}>{t.trip_headsign}</option>)
                         ) : (
                             <option value="">Any</option>
                         )}
@@ -146,7 +220,7 @@ const PredictionForm = ({ onPrediction }) => {
                         <label>Source</label>
                         <select name="source" value={formData.source} onChange={handleChange}>
                             {stops.length > 0 ? (
-                                stops.map(s => <option key={`src_${s.stop_id}`} value={s.stop_name}>{s.stop_name}</option>)
+                                stops.map((s, index) => <option key={`src_${index}`} value={s.stop_name}>{s.stop_name}</option>)
                             ) : (
                                 <option value="">Loading stops...</option>
                             )}
@@ -156,7 +230,7 @@ const PredictionForm = ({ onPrediction }) => {
                         <label>Destination</label>
                         <select name="destination" value={formData.destination} onChange={handleChange}>
                             {stops.length > 0 ? (
-                                stops.map(s => <option key={`dest_${s.stop_id}`} value={s.stop_name}>{s.stop_name}</option>)
+                                stops.map((s, index) => <option key={`dest_${index}`} value={s.stop_name}>{s.stop_name}</option>)
                             ) : (
                                 <option value="">Loading stops...</option>
                             )}
@@ -195,11 +269,14 @@ const PredictionForm = ({ onPrediction }) => {
                     </select>
                 </div>
 
-                <button type="submit" className="primary-btn" disabled={loading}>
+                <button type="submit" className="primary-btn" disabled={loading || formData.source === formData.destination}>
                     {loading ? 'Calculating...' : 'Predict Delay'}
                 </button>
 
-                {error && <p style={{ color: 'red' }}>{error}</p>}
+                {formData.source === formData.destination && formData.source && (
+                    <p style={{ color: 'orange', marginTop: '10px' }}>⚠️ Source and destination must be different</p>
+                )}
+                {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
             </form>
         </div>
     );
