@@ -119,7 +119,7 @@ def get_route_info():
         
         # OpenRouteService API endpoint
         # Note: You'll need to sign up at https://openrouteservice.org/ to get a free API key
-        ORS_API_KEY = os.environ.get('ORS_API_KEY', '5b3ce3597851110001cf6248f88b37a31c9a4c069b64e9e050e80a14')
+        ORS_API_KEY = os.environ.get('ORS_API_KEY') or 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjNhODM2NDM0YjI0YjQ1ZmFiNzFlMTdiZGQ0NjQxNTAyIiwiaCI6Im11cm11cjY0In0='
         
         url = 'https://api.openrouteservice.org/v2/directions/driving-car'
         headers = {
