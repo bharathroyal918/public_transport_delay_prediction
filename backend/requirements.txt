@@ -7,3 +7,6 @@ joblib
 pytest
 requests
 polyline
+flask-jwt-extended
+google-generativeai
+python-dotenv

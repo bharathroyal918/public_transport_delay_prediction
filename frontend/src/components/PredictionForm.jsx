@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { predictDelay, getRoutes, getTrips, getStops, getRouteInfo } from '../api';
+import { predictDelay, getRoutes, getTrips, getStops, fetchRouteInfo } from '../api';
 
 const PredictionForm = ({ onPrediction }) => {
     const [formData, setFormData] = useState({
@@ -73,7 +73,7 @@ const PredictionForm = ({ onPrediction }) => {
     useEffect(() => {
         let cancelled = false;
 
-        const fetchRouteInfo = async () => {
+        const loadRouteData = async () => {
             // Only proceed if we have stops loaded and valid selections
             if (stops.length === 0 || !formData.source || !formData.destination || formData.source === formData.destination) {
                 return;
@@ -84,7 +84,7 @@ const PredictionForm = ({ onPrediction }) => {
 
             if (sourceStop && destStop && sourceStop.stop_id !== destStop.stop_id) {
                 try {
-                    const info = await getRouteInfo(
+                    const info = await fetchRouteInfo(
                         sourceStop.stop_lat,
                         sourceStop.stop_lon,
                         destStop.stop_lat,
@@ -107,7 +107,7 @@ const PredictionForm = ({ onPrediction }) => {
         };
 
         // Add a small delay to ensure stops are fully loaded
-        const timeoutId = setTimeout(fetchRouteInfo, 100);
+        const timeoutId = setTimeout(loadRouteData, 100);
 
         return () => {
             cancelled = true;
@@ -154,7 +154,7 @@ const PredictionForm = ({ onPrediction }) => {
                 const destStop = stops.find(s => s.stop_name === formData.destination);
 
                 if (sourceStop && destStop && sourceStop.stop_id !== destStop.stop_id) {
-                    currentRouteInfo = await getRouteInfo(
+                    currentRouteInfo = await fetchRouteInfo(
                         sourceStop.stop_lat,
                         sourceStop.stop_lon,
                         destStop.stop_lat,

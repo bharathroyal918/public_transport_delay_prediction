@@ -1,31 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import Dashboard from './components/Dashboard';
-import './App.css';
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Layout from './components/Layout';
+import Landing from './pages/Landing';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
-function App() {
-  const [health, setHealth] = useState(null);
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" />;
+  return children;
+};
 
-  useEffect(() => {
-    // Check backend health
-    fetch('http://localhost:5000/health')
-      .then(res => res.json())
-      .then(data => setHealth(data.status))
-      .catch(err => setHealth('offline'));
-  }, []);
+// Wrapper to provide auth context inside Router (since App is inside Router in main.jsx usually, 
+// OR we put Router inside App. Let's check main.jsx)
+// Checking main.jsx, it usually renders <App />. I need to wrap App in Router there OR here.
+// I will wrap here if main handles just App.
 
+const AppContent = () => {
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <h1>Public Transport Delay Prediction</h1>
-        <span className={`status-badge ${health === 'healthy' ? 'online' : 'offline'}`}>
-          System: {health}
-        </span>
-      </header>
-      <main>
-        <Dashboard />
-      </main>
-    </div>
+    <Layout>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        } />
+      </Routes>
+    </Layout>
   );
 }
+
+const App = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+};
 
 export default App;
